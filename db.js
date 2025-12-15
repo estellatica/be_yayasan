@@ -9,12 +9,12 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3307,
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error('❌ Gagal konek DB:', err.message);
-  } else {
-    console.log('✅ MySQL Connected');
-  }
-});
+try {
+  await db.connect();
+  console.log("✅ DB connected");
+} catch (err) {
+  console.error("❌ Gagal konek DB full:", err);
+}
+
 
 module.exports = db;
