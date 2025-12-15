@@ -4,6 +4,7 @@ import express from 'express';
 // Mengimpor db dari file db.js yang baru (promise-based)
 import db from '../db.js'; 
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 const router = express.Router();
 
@@ -39,33 +40,35 @@ router.post('/daftar', async (req, res) => { // Fungsi diubah menjadi async
 // =====================
 // LOGIN ADMIN (Menggunakan async/await)
 // =====================
-router.post('/login', async (req, res) => { // Fungsi diubah menjadi async
+router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
-    // CATATAN: PENTING! Password harus di-hash (bcrypt/scrypt) di aplikasi nyata.
-    // Mengirim password mentah ke DB sangat tidak disarankan!
     if (!email || !password) {
         return res.status(400).send({ message: "Email dan Password wajib diisi." });
     }
 
-    const sql = "SELECT id, nama, email, password FROM admin WHERE email = ?";
-    // Tidak menggunakan password di query untuk keamanan, nanti dibandingkan setelah fetch hash
-    
+    // Hanya ambil email dan hash password dari database
+    const sql = "SELECT id, nama, email, password FROM admin WHERE email = ?"; 
+
     try {
-        // Mengganti db.query(..., callback) dengan await db.query(...)
-        // Query Promise mengembalikan array [rows, fields]
         const [rows] = await db.query(sql, [email]); 
 
         if (rows.length === 0) {
+            // Penting: Selalu berikan pesan error generik untuk mencegah serangan enumeration
             return res.status(401).send({ message: "Email atau Password salah!" });
         }
 
         const user = rows[0];
+        const hashedPassword = user.password; // Hash password yang disimpan di DB
 
-        // Membandingkan password (TETAP HARUS DIGANTI dengan perbandingan hash di aplikasi nyata)
-        if (user.password !== password) {
+        // 1. BANDINGKAN PASSWORD: Menggunakan bcrypt.compare
+        const isMatch = await bcrypt.compare(password, hashedPassword);
+
+        if (!isMatch) {
              return res.status(401).send({ message: "Email atau Password salah!" });
         }
+        
+        // --- Jika password cocok, lanjutkan membuat JWT ---
 
         const token = jwt.sign(
             { id: user.id, email: user.email },
@@ -73,7 +76,7 @@ router.post('/login', async (req, res) => { // Fungsi diubah menjadi async
             { expiresIn: '1d' }
         );
 
-        // Hapus password dari objek user yang dikirim ke klien
+        // Hapus hash password sebelum dikirim ke klien
         delete user.password; 
 
         res.status(200).send({
