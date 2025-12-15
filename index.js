@@ -24,9 +24,14 @@ const PORT = process.env.PORT || 5000;
 // ===== CORS CONFIG =====
 // Pastikan di .env ada FRONTEND_URL=http://localhost:5173
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:5173", // Fallback jika .env kosong
+  origin: [
+    "http://localhost:5173",          // Untuk ngetes di laptop (Localhost)
+    "https://daarulihsaan.com",       // ✅ WAJIB ADA HTTPS://
+    "https://www.daarulihsaan.com"    // Jaga-jaga kalau orang buka pakai www
+  ],
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true, // Izinkan cookie/token jika nanti diperlukan
+  credentials: true,
+  optionsSuccessStatus: 200
 };
 
 // ===== MIDDLEWARE =====
