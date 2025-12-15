@@ -12,7 +12,7 @@ router.post('/login', async (req, res) => {
         const { email, password } = req.body; 
 
         // 1. Cek User berdasarkan EMAIL
-        const sql = "SELECT * FROM users WHERE email = ?";
+        const sql = "SELECT * FROM admin WHERE email = ?";
         const [rows] = await db.query(sql, [email]);
 
         // Jika email tidak ditemukan
