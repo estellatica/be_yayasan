@@ -1,40 +1,50 @@
 import express from 'express';
 import 'dotenv/config'; 
-import cors from 'cors'; // Diperbaiki dari require('cors')
-import bodyParser from 'body-parser'; // Diperbaiki dari require('body-parser')
-
-// --- Import tambahan untuk menangani __dirname dan path statis ---
-import path, { dirname } from 'path'; // Digunakan untuk path.join
-import { fileURLToPath } from 'url'; // Digunakan untuk mendapatkan path saat ini
+import cors from 'cors'; 
+import path, { dirname } from 'path'; 
+import { fileURLToPath } from 'url'; 
+import fs from 'fs'; // Tambahan: untuk cek folder uploads
 
 // --- Import file lokal ---
-import './db.js'; // Diperbaiki dari require('./db'), pastikan file db bernama db.js
-import beritaRoutes from './routes/berita.js'; // Diperbaiki dari require('./routes/berita')
-import pendaftarRoutes from './routes/pendaftar.js'; // Diperbaiki dari require('./routes/pendaftar')
-import authRoutes from './routes/auth.js'; // Diperbaiki dari require('./routes/auth')
+// Tidak perlu import db.js di sini jika server.js tidak melakukan query database langsung.
+// Koneksi database akan dipanggil otomatis saat routes diakses.
+import beritaRoutes from './routes/berita.js'; 
+import pendaftarRoutes from './routes/pendaftar.js'; 
+import authRoutes from './routes/auth.js'; 
 
 const app = express();
 
-// **ES MODULE FIX**: Mendefinisikan ulang __dirname dan __filename
-// Ini diperlukan karena dalam ES Modules, variabel __dirname dan __filename tidak lagi global.
+// **ES MODULE FIX**: Setup Path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // ===== PORT =====
 const PORT = process.env.PORT || 5000;
 
+// ===== CORS CONFIG =====
+// Pastikan di .env ada FRONTEND_URL=http://localhost:5173
 const corsOptions = {
-  origin: process.env.FRONTEND_URL,
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
+  origin: process.env.FRONTEND_URL || "http://localhost:5173", // Fallback jika .env kosong
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true, // Izinkan cookie/token jika nanti diperlukan
 };
 
 // ===== MIDDLEWARE =====
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-// Sekarang, path.join akan berfungsi dengan __dirname yang sudah didefinisikan ulang
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(cors(corsOptions)); // ✅ FIX: Gunakan options yang sudah dibuat
+app.use(express.json()); // ✅ Modern: Pengganti bodyParser.json()
+app.use(express.urlencoded({ extended: true })); // ✅ Modern: Pengganti bodyParser.urlencoded
+
+// ===== STATIC FILES (GAMBAR) =====
+// Cek apakah folder 'uploads' ada, jika tidak buat dulu biar gak error
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir);
+    console.log("Folder 'uploads' berhasil dibuat otomatis.");
+}
+
+// Buka akses folder uploads ke publik
+// URL nanti: http://localhost:5000/uploads/foto-santri.jpg
+app.use('/uploads', express.static(uploadDir));
 
 // ===== ROUTES =====
 app.use('/api/auth', authRoutes);         
@@ -43,24 +53,24 @@ app.use('/api/pendaftar', pendaftarRoutes);
 
 // ===== ROOT CHECK =====
 app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'Backend Yayasan jalan 🚀',
-    status: 'online'
-  });
+  res.status(200).json({
+    message: 'Backend Yayasan Berjalan 🚀',
+    env: process.env.NODE_ENV || 'development',
+    frontend_origin: process.env.FRONTEND_URL
+  });
 });
 
-// ===== 404 =====
+// ===== 404 & ERROR HANDLING =====
 app.use((req, res) => {
-  res.status(404).json({ message: 'Route tidak ditemukan' });
+  res.status(404).json({ message: 'Route tidak ditemukan' });
 });
 
-// ===== ERROR =====
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Internal Server Error' });
+  console.error("SERVER ERROR:", err.stack);
+  res.status(500).json({ message: 'Internal Server Error' });
 });
 
 // ===== START =====
 app.listen(PORT, () => {
-  console.log(`🚀 Backend running on port ${PORT}`);
+  console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
