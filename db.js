@@ -1,23 +1,22 @@
-// File: db.js (VERSI PERBAIKAN UNTUK HOSTINGER)
+// File: db.js (FINAL - Railway & Hostinger Aman)
 
+require("dotenv").config();
 const mysql = require("mysql2");
 
-// Ambil kredensial dari Environment Variables yang diatur di hPanel
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,      // Harus diisi 'localhost' di hPanel
-  user: process.env.DB_USER,      // Harus diisi 'u159260889_yayasan_db' di hPanel
-  password: process.env.DB_PASSWORD, // Harus diisi Password Anda di hPanel
-  database: process.env.DB_NAME,    // Harus diisi 'u159260889_yayasan_db' di hPanel
-  // Port tidak perlu disertakan, biarkan MySQL default (3306)
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
 });
 
 db.connect((err) => {
-  if (err) {
-      // Di sini error akan mencatat kegagalan, yang akan terlihat di Log Hostinger
-      console.error("❌ Gagal Konek Database:", err);
-  } else {
-      console.log("✅ MySQL Connected...");
-  }
+  if (err) {
+    console.error("❌ Gagal Konek Database:", err.message);
+  } else {
+    console.log("✅ MySQL Connected");
+  }
 });
 
 module.exports = db;
