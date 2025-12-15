@@ -1,139 +1,152 @@
-const express = require("express");
+// routes/pendaftar.js
+
+import express from 'express';
+import multer from 'multer'; // Ganti const multer = require("multer");
+import path, { dirname } from 'path'; // Ganti const path = require("path");
+import { fileURLToPath } from 'url'; // Untuk mendapatkan __dirname
+import db from '../db.js'; // Ganti const db = require("../db");
+
 const router = express.Router();
-const db = require("../db");
-const multer = require("multer");
-const path = require("path");
+
+// **ES MODULE FIX**: Mendefinisikan ulang __dirname dan __filename
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ===========================
 // SETUP MULTER (BUKTI TRANSFER)
 // ===========================
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
+  destination: (req, file, cb) => {
+    // Menggunakan path.join dan __dirname yang sudah diperbaiki
+    cb(null, path.join(__dirname, '..', 'uploads')); 
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
 });
 
 const upload = multer({ storage });
 
 // ===========================
-// 1. SIMPAN PENDAFTARAN (POST)
+// 1. SIMPAN PENDAFTARAN (POST) - Menggunakan async/await
 // ===========================
-router.post("/", upload.single("buktiTransfer"), (req, res) => {
-  const { nama, jenisKelamin, jenjang, kategori, noWa } = req.body;
+router.post("/", upload.single("buktiTransfer"), async (req, res) => { // Ubah fungsi menjadi async
+  const { nama, jenisKelamin, jenjang, kategori, noWa } = req.body;
 
-  if (!req.file) {
-    return res
-      .status(400)
-      .json({ message: "Bukti transfer wajib diupload!" });
-  }
+  if (!req.file) {
+    return res
+      .status(400)
+      .json({ message: "Bukti transfer wajib diupload!" });
+  }
 
-  const buktiTransfer = req.file.filename;
+  const buktiTransfer = req.file.filename;
 
-  const sql = `
-    INSERT INTO pendaftar 
-    (nama, jenis_kelamin, jenjang, kategori, no_wa, bukti_transfer)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
+  const sql = `
+    INSERT INTO pendaftar 
+    (nama, jenis_kelamin, jenjang, kategori, no_wa, bukti_transfer)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
 
-  db.query(
-    sql,
-    [nama, jenisKelamin, jenjang, kategori, noWa, buktiTransfer],
-    (err) => {
-      if (err) {
-        console.error("ERROR INSERT PENDAFTAR:", err);
-        return res.status(500).json({ message: "Gagal menyimpan data" });
-      }
-
-      res.status(201).json({
-        message: "Pendaftaran berhasil dikirim!",
-      });
-    }
-  );
+  const values = [nama, jenisKelamin, jenjang, kategori, noWa, buktiTransfer];
+  
+  try {
+    // Mengganti db.query(..., callback) dengan await db.query(...)
+    await db.query(sql, values); 
+    
+    res.status(201).json({
+      message: "Pendaftaran berhasil dikirim!",
+    });
+  } catch (err) {
+    console.error("ERROR INSERT PENDAFTAR:", err);
+    return res.status(500).json({ message: "Gagal menyimpan data" });
+  }
 });
 
 // ===========================
-// 2. AMBIL SEMUA PENDAFTAR (ADMIN)
+// 2. AMBIL SEMUA PENDAFTAR (ADMIN) - Menggunakan async/await
 // ===========================
-router.get("/", (req, res) => {
-  const sql = "SELECT * FROM pendaftar ORDER BY created_at DESC";
+router.get("/", async (req, res) => { // Ubah fungsi menjadi async
+  const sql = "SELECT * FROM pendaftar ORDER BY created_at DESC";
 
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error("ERROR GET PENDAFTAR:", err);
-      return res.status(500).json({ message: "Gagal mengambil data" });
-    }
+  try {
+    // Mengganti db.query(..., callback) dengan await db.query(...)
+    const [results] = await db.query(sql); 
+    
+    const data = results.map((row) => ({
+      ...row,
+      bukti_url: row.bukti_transfer
+        ? `${process.env.BASE_URL}/uploads/${row.bukti_transfer}`
+        : null,
+    }));
 
-    const data = results.map((row) => ({
-      ...row,
-      bukti_url: row.bukti_transfer
-        ? `${process.env.BASE_URL}/uploads/${row.bukti_transfer}`
-        : null,
-    }));
-
-    res.json(data);
-  });
+    res.json(data);
+  } catch (err) {
+    console.error("ERROR GET PENDAFTAR:", err);
+    return res.status(500).json({ message: "Gagal mengambil data" });
+  }
 });
 
 // ===========================
-// 3. AMBIL DETAIL PENDAFTAR
+// 3. AMBIL DETAIL PENDAFTAR - Menggunakan async/await
 // ===========================
-router.get("/:id", (req, res) => {
-  const sql = "SELECT * FROM pendaftar WHERE id = ?";
+router.get("/:id", async (req, res) => { // Ubah fungsi menjadi async
+  const sql = "SELECT * FROM pendaftar WHERE id = ?";
 
-  db.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Gagal mengambil data" });
-    }
+  try {
+    // Mengganti db.query(..., callback) dengan await db.query(...)
+    const [result] = await db.query(sql, [req.params.id]); 
 
-    if (result.length === 0) {
-      return res.status(404).json({ message: "Data tidak ditemukan" });
-    }
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Data tidak ditemukan" });
+    }
 
-    const data = result[0];
+    const data = result[0];
 
-    res.json({
-      ...data,
-      bukti_url: data.bukti_transfer
-        ? `${process.env.BASE_URL}/uploads/${data.bukti_transfer}`
-        : null,
-    });
-  });
+    res.json({
+      ...data,
+      bukti_url: data.bukti_transfer
+        ? `${process.env.BASE_URL}/uploads/${data.bukti_transfer}`
+        : null,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Gagal mengambil data" });
+  }
 });
 
 // ===========================
-// 4. UPDATE STATUS PENDAFTAR
+// 4. UPDATE STATUS PENDAFTAR - Menggunakan async/await
 // ===========================
-router.put("/:id", (req, res) => {
-  const { status } = req.body;
+router.put("/:id", async (req, res) => { // Ubah fungsi menjadi async
+  const { status } = req.body;
 
-  const sql = "UPDATE pendaftar SET status = ? WHERE id = ?";
+  const sql = "UPDATE pendaftar SET status = ? WHERE id = ?";
 
-  db.query(sql, [status, req.params.id], (err) => {
-    if (err) {
-      return res.status(500).json({ message: "Gagal update status" });
-    }
-
-    res.json({ message: "Status berhasil diperbarui" });
-  });
+  try {
+    // Mengganti db.query(..., callback) dengan await db.query(...)
+    await db.query(sql, [status, req.params.id]); 
+    
+    res.json({ message: "Status berhasil diperbarui" });
+  } catch (err) {
+    return res.status(500).json({ message: "Gagal update status" });
+  }
 });
 
 // ===========================
-// 5. HAPUS PENDAFTAR
+// 5. HAPUS PENDAFTAR - Menggunakan async/await
 // ===========================
-router.delete("/:id", (req, res) => {
-  const sql = "DELETE FROM pendaftar WHERE id = ?";
+router.delete("/:id", async (req, res) => { // Ubah fungsi menjadi async
+  const sql = "DELETE FROM pendaftar WHERE id = ?";
 
-  db.query(sql, [req.params.id], (err) => {
-    if (err) {
-      return res.status(500).json({ message: "Gagal menghapus data" });
-    }
-
-    res.json({ message: "Data berhasil dihapus" });
-  });
+  try {
+    // Mengganti db.query(..., callback) dengan await db.query(...)
+    await db.query(sql, [req.params.id]); 
+    
+    res.json({ message: "Data berhasil dihapus" });
+  } catch (err) {
+    return res.status(500).json({ message: "Gagal menghapus data" });
+  }
 });
 
+// Mengekspor router (sudah benar)
 export default router;
