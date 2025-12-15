@@ -17,4 +17,4 @@ try {
 }
 
 
-module.exports = db;
+export default db;

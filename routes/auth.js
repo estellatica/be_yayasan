@@ -1,6 +1,4 @@
-// File: routes/auth.js
-
-const express = require('express');
+import express from 'express';
 const router = express.Router();
 const db = require('../db');
 const jwt = require('jsonwebtoken');
@@ -70,4 +68,4 @@ router.post('/login', (req, res) => {
     });
 });
 
-module.exports = router;
+export default router;
