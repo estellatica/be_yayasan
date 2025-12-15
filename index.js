@@ -37,8 +37,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ===== ROUTES =====
-app.use('/api', authRoutes);
-app.use('/api/berita', beritaRoutes);
+app.use('/api/auth', authRoutes);         
+app.use('/api/berita', beritaRoutes);     
 app.use('/api/pendaftar', pendaftarRoutes);
 
 // ===== ROOT CHECK =====
